@@ -218,7 +218,7 @@ function PropRow({ schema, value, onSave }: {
 
   /* editing input shared style */
   const inputStyle: React.CSSProperties = {
-    flex:1, border:"none", borderBottom:"2px solid var(--accent)",
+    flex:1, border:"none",
     background:"transparent", borderRadius:0, fontSize:13, color:"#333",
     fontFamily:"inherit", outline:"none", padding:"0", minWidth:0,
   };
