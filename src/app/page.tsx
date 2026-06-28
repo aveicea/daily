@@ -40,11 +40,12 @@ function hex2hsl(hex: string): [number, number, number] {
   return[Math.round(h*360),Math.round(s*100),Math.round(l*100)];
 }
 function accentVars(accent: string) {
-  const [h,s,l]=hex2hsl(accent);
+  const [h,s]=hex2hsl(accent);
   return {
     "--accent": accent,
-    "--accent-light": `hsl(${h},${s}%,${Math.min(l+9,97)}%)`,
-    "--border-color": `hsl(${h},${Math.max(s-20,3)}%,${Math.min(l+11,96)}%)`,
+    "--accent-light": `hsl(${h},${Math.min(s,25)}%,95%)`,   /* always light */
+    "--accent-header": `hsl(${h},${Math.min(s,18)}%,93%)`,  /* header bg */
+    "--border-color": `hsl(${h},${Math.min(s,15)}%,88%)`,
   } as React.CSSProperties;
 }
 
@@ -203,21 +204,35 @@ function PropRow({ schema, value, onSave }: {
       : null;
 
   const labelEl = (
-    <span style={{fontSize:11,fontWeight:600,color:"#bbb",letterSpacing:0.3,userSelect:"none",display:"block",marginBottom:3}}>
+    <span style={{fontSize:10,fontWeight:600,color:"#aaa",letterSpacing:0.4,userSelect:"none",display:"block",marginBottom:4,textTransform:"uppercase"}}>
       {schema.name}
     </span>
   );
+
+  /* wrapper style for the value — light bar like the preview */
+  const valBox: React.CSSProperties = {
+    minHeight:28, borderRadius:6, background:"var(--accent-light)",
+    border:"1px solid var(--border-color)", padding:"4px 8px",
+    display:"flex", alignItems:"center", cursor:"pointer", transition:"background 0.15s",
+  };
+
+  /* editing input shared style */
+  const inputStyle: React.CSSProperties = {
+    flex:1, border:"none", borderBottom:"2px solid var(--accent)",
+    background:"transparent", borderRadius:0, fontSize:13, color:"#333",
+    fontFamily:"inherit", outline:"none", padding:"0", minWidth:0,
+  };
 
   /* ── checkbox ── */
   if (type==="checkbox") {
     return (
       <div ref={containerRef} style={{padding:"4px 0"}}>
         {labelEl}
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <div onClick={startEdit}
-            style={{width:18,height:18,borderRadius:4,border:`2px solid ${checked?"var(--accent)":"#ddd"}`,background:checked?"var(--accent)":"#fff",cursor:saving?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s"}}>
+        <div style={{...valBox,width:"fit-content",gap:6}} onClick={startEdit}>
+          <div style={{width:16,height:16,borderRadius:3,border:`2px solid ${checked?"var(--accent)":"#ccc"}`,background:checked?"var(--accent)":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s"}}>
             {checked && <svg width="9" height="9" viewBox="0 0 9 9"><polyline points="1,4.5 3.5,7 8,2" stroke="#fff" strokeWidth="2" fill="none"/></svg>}
           </div>
+          <span style={{fontSize:12,color:"#555"}}>{checked?"예":"아니오"}</span>
           {indicator}
         </div>
       </div>
@@ -232,31 +247,21 @@ function PropRow({ schema, value, onSave }: {
     return (
       <div ref={containerRef} style={{padding:"4px 0"}}>
         {labelEl}
-        <div style={{position:"relative",display:"inline-block"}}>
-          <div onClick={startEdit}
-            style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:20,background:curOpt?optBg(curOpt.color):editing?"var(--accent-light)":"#f5f5f5",cursor:"pointer",fontSize:13,color:"#444",opacity:saving?0.5:1,border:`1px solid ${editing?"var(--accent)":"transparent"}`,transition:"all 0.15s"}}>
-            {curName||<span style={{opacity:0}}>—</span>}
-            <span style={{fontSize:9,opacity:0.4}}>▼</span>
+        <div style={{position:"relative"}}>
+          <div onClick={startEdit} style={{...valBox,opacity:saving?0.5:1,background:editing?"var(--accent-light)":curOpt?optBg(curOpt.color):"var(--accent-light)",border:editing?"1px solid var(--accent)":"1px solid var(--border-color)"}}>
+            <span style={{flex:1,fontSize:13,color:curName?"#333":"transparent"}}>{curName||"—"}</span>
+            <span style={{fontSize:9,color:"#bbb"}}>▼</span>
+            {indicator}
           </div>
-          {indicator}
           {editing && (
-            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#fff",border:"1px solid var(--border-color)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)",minWidth:160,overflow:"hidden"}}>
-              <div onClick={()=>{setDraft("");commit();}}
-                style={{padding:"8px 14px",fontSize:12,color:"#bbb",cursor:"pointer",borderBottom:"1px solid #f5f5f5"}}>
-                선택 안 함
-              </div>
+            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#fff",border:"1px solid var(--border-color)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)",minWidth:"100%",overflow:"hidden"}}>
+              <div onClick={()=>{setDraft("");commit();}} style={{padding:"8px 14px",fontSize:12,color:"#bbb",cursor:"pointer",borderBottom:"1px solid #f5f5f5"}}>선택 안 함</div>
               {opts.map(o=>(
-                <div key={o.id} onClick={()=>{setDraft(o.name);/* commit via effect after draft set */
-                  setDraft(o.name);
-                  setEditing(false);
-                  setSaving(true);
-                  onSave(buildPatch(type,o.name)).then(()=>{setSaved(true);setTimeout(()=>setSaved(false),1000);}).finally(()=>setSaving(false));
-                }}
+                <div key={o.id} onClick={()=>{setEditing(false);setSaving(true);onSave(buildPatch(type,o.name)).then(()=>{setSaved(true);setTimeout(()=>setSaved(false),1000);}).finally(()=>setSaving(false));}}
                   style={{padding:"8px 14px",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:8,background:o.name===curName?optBg(o.color):"transparent"}}
                   onMouseEnter={e=>(e.currentTarget.style.background=optBg(o.color))}
                   onMouseLeave={e=>(e.currentTarget.style.background=o.name===curName?optBg(o.color):"transparent")}>
-                  <span style={{width:10,height:10,borderRadius:"50%",background:optBg(o.color),border:"1px solid #ddd",flexShrink:0}}/>
-                  {o.name}
+                  <span style={{width:10,height:10,borderRadius:"50%",background:optBg(o.color),border:"1px solid #ddd",flexShrink:0}}/>{o.name}
                 </div>
               ))}
             </div>
@@ -277,8 +282,7 @@ function PropRow({ schema, value, onSave }: {
       <div ref={containerRef} style={{padding:"4px 0"}}>
         {labelEl}
         <div style={{position:"relative"}}>
-          <div onClick={startEdit}
-            style={{display:"flex",flexWrap:"wrap",gap:4,cursor:"pointer",minHeight:24,alignItems:"center",padding:"2px 0",opacity:saving?0.5:1}}>
+          <div onClick={startEdit} style={{...valBox,flexWrap:"wrap",gap:4,opacity:saving?0.5:1,border:editing?"1px solid var(--accent)":"1px solid var(--border-color)"}}>
             {curNames.length===0&&!editing&&<span style={{fontSize:13,opacity:0}}>—</span>}
             {curNames.map((name:string)=>{
               const o=opts.find(op=>op.name===name);
@@ -287,7 +291,7 @@ function PropRow({ schema, value, onSave }: {
             {indicator}
           </div>
           {editing && (
-            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#fff",border:"1px solid var(--border-color)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)",minWidth:180,overflow:"hidden"}}>
+            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#fff",border:"1px solid var(--border-color)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)",minWidth:"100%",overflow:"hidden"}}>
               {opts.map(o=>{
                 const sel=multiDraft.includes(o.name);
                 return (
@@ -315,16 +319,16 @@ function PropRow({ schema, value, onSave }: {
     return (
       <div ref={containerRef} style={{padding:"4px 0"}}>
         {labelEl}
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <div style={{...valBox,gap:6,border:editing?"1px solid var(--accent)":"1px solid var(--border-color)"}}>
           {editing ? (
             <input ref={inputRef as React.RefObject<HTMLInputElement>} type="date" value={draft}
               onChange={e=>setDraft(e.target.value)}
               onKeyDown={e=>{if(e.key==="Enter"){e.currentTarget.blur();commit();}if(e.key==="Escape"){setEditing(false);}}}
-              style={{border:"none",borderBottom:"1px solid var(--accent)",background:"var(--accent-light)",borderRadius:"4px 4px 0 0",fontSize:13,color:"#444",fontFamily:"inherit",outline:"none",padding:"4px 8px"}}
+              style={{...inputStyle,flex:1}}
             />
           ) : (
-            <span onClick={startEdit} style={{fontSize:13,color:display?"#444":"#ccc",cursor:"pointer",padding:"2px 0"}}>
-              {display||<span style={{opacity:0}}>—</span>}
+            <span onClick={startEdit} style={{flex:1,fontSize:13,color:display?"#333":"transparent",cursor:"pointer"}}>
+              {display||"—"}
             </span>
           )}
           {indicator}
@@ -335,22 +339,22 @@ function PropRow({ schema, value, onSave }: {
 
   /* ── title / rich_text → textarea ── */
   if (type==="title"||type==="rich_text") {
-    const lines = draft.split("\n").length;
+    const lines = (editing?draft:display).split("\n").length;
     return (
       <div ref={containerRef} style={{padding:"4px 0"}}>
         {labelEl}
-        <div style={{display:"flex",alignItems:"flex-start",gap:6}}>
+        <div style={{...valBox,alignItems:"flex-start",border:editing?"1px solid var(--accent)":"1px solid var(--border-color)"}}>
           {editing ? (
             <textarea ref={inputRef as unknown as React.RefObject<HTMLTextAreaElement>}
               value={draft} onChange={e=>setDraft(e.target.value)}
               rows={Math.max(2,lines)}
               onKeyDown={e=>{if(e.key==="Escape"){setEditing(false);}}}
-              style={{flex:1,border:"none",borderBottom:"1px solid var(--accent)",background:"var(--accent-light)",borderRadius:"4px 4px 0 0",fontSize:13,color:"#444",fontFamily:"inherit",outline:"none",padding:"6px 8px",resize:"vertical",lineHeight:1.6,minWidth:0}}
+              style={{...inputStyle,flex:1,resize:"vertical",lineHeight:1.6,padding:0}}
             />
           ) : (
             <span onClick={startEdit}
-              style={{fontSize:13,color:display?"#444":"#ccc",cursor:"pointer",whiteSpace:"pre-wrap",wordBreak:"break-word",flex:1,display:"block",lineHeight:1.6}}>
-              {display||<span style={{opacity:0}}>—</span>}
+              style={{flex:1,fontSize:13,color:display?"#333":"transparent",cursor:"pointer",whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.6}}>
+              {display||"—"}
             </span>
           )}
           {indicator}
@@ -363,18 +367,17 @@ function PropRow({ schema, value, onSave }: {
   return (
     <div ref={containerRef} style={{padding:"4px 0"}}>
       {labelEl}
-      <div style={{display:"flex",alignItems:"center",gap:6}}>
+      <div style={{...valBox,gap:6,border:editing?"1px solid var(--accent)":"1px solid var(--border-color)"}}>
         {editing ? (
           <input ref={inputRef as React.RefObject<HTMLInputElement>}
             type={type==="number"?"number":type==="url"?"url":type==="email"?"email":"tel"}
             value={draft} onChange={e=>setDraft(e.target.value)}
             onKeyDown={e=>{if(e.key==="Enter"){e.currentTarget.blur();commit();}if(e.key==="Escape"){setEditing(false);}}}
-            style={{flex:1,border:"none",borderBottom:"1px solid var(--accent)",background:"var(--accent-light)",borderRadius:"4px 4px 0 0",fontSize:13,color:"#444",fontFamily:"inherit",outline:"none",padding:"4px 8px",minWidth:0}}
+            style={{...inputStyle,flex:1}}
           />
         ) : (
-          <span onClick={startEdit}
-            style={{fontSize:13,color:display?"#444":"#ccc",cursor:"pointer",wordBreak:"break-all",flex:1}}>
-            {display||<span style={{opacity:0}}>—</span>}
+          <span onClick={startEdit} style={{flex:1,fontSize:13,color:display?"#333":"transparent",cursor:"pointer",wordBreak:"break-all"}}>
+            {display||"—"}
           </span>
         )}
         {indicator}
@@ -519,58 +522,63 @@ function DailyWidget() {
   if (!config) return null;
 
   return (
-    <div style={{...accentVars(accent),height:"100%",display:"flex",flexDirection:"column",fontFamily:"'Pretendard Variable','Pretendard',sans-serif"}}>
+    <div style={{...accentVars(accent),height:"100%",display:"flex",alignItems:"flex-start",justifyContent:"center",background:"transparent",fontFamily:"'Pretendard Variable','Pretendard',sans-serif",padding:"16px",boxSizing:"border-box"}}>
       <style>{`
         @keyframes y2kFadeIn{from{opacity:0}to{opacity:1}}
         @keyframes dotBounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
-        .ds::-webkit-scrollbar{width:5px}.ds::-webkit-scrollbar-track{background:transparent}
-        .ds::-webkit-scrollbar-thumb{background:var(--accent);border-radius:4px;opacity:.4}
-        .ds{scrollbar-width:thin;scrollbar-color:var(--accent) transparent}
-        .nb{background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 6px;font-size:13px;color:#bbb;line-height:1}
+        .ds::-webkit-scrollbar{width:4px}.ds::-webkit-scrollbar-track{background:transparent}
+        .ds::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:4px}
+        .ds{scrollbar-width:thin;scrollbar-color:var(--border-color) transparent}
+        .nb{background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 6px;font-size:12px;color:#999;line-height:1}
         .nb:hover{color:var(--accent)}
       `}</style>
 
-      {/* header */}
-      <div style={{padding:"8px 14px",display:"flex",alignItems:"center",borderBottom:"1px solid var(--border-color)",background:"var(--accent-light)",flexShrink:0}}>
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
-          <button className="nb" onClick={()=>setDate(d=>shiftDate(d,-1))}>◀</button>
-          <input type="date" value={date} onChange={e=>setDate(e.target.value)}
-            style={{border:"none",background:"transparent",fontSize:13,fontWeight:600,color:"#444",fontFamily:"inherit",cursor:"pointer",textAlign:"center",letterSpacing:0.3}}/>
-          <button className="nb" onClick={()=>setDate(d=>shiftDate(d,1))}>▶</button>
-        </div>
-        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-          {date!==todayStr()&&(
-            <button onClick={()=>setDate(todayStr())}
-              style={{fontSize:10,padding:"2px 8px",borderRadius:20,border:"1px solid var(--accent)",background:"none",color:"var(--accent)",cursor:"pointer",fontFamily:"inherit"}}>
-              오늘
-            </button>
-          )}
-          <button className="nb" onClick={()=>router.push("/setup")} title="설정" style={{fontSize:15,color:"#ccc"}}>⚙</button>
-        </div>
-      </div>
+      {/* card */}
+      <div style={{width:"100%",maxWidth:640,background:"#fff",border:"1px solid var(--border-color)",borderRadius:12,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
 
-      {/* body */}
-      <div className="ds" style={{flex:1,overflowY:"auto",padding:"14px 16px",display:"flex",flexDirection:"column",gap:20}}>
-        {loading && (
-          <div style={{display:"flex",justifyContent:"center",padding:"36px 0",gap:6}}>
-            {[0,1,2].map(i=>(
-              <div key={i} style={{width:7,height:7,borderRadius:"50%",background:"var(--accent)",animation:`dotBounce 1.2s ease-in-out ${i*0.2}s infinite`}}/>
-            ))}
+        {/* header */}
+        <div style={{padding:"8px 14px",display:"flex",alignItems:"center",borderBottom:"1px solid var(--border-color)",background:"var(--accent-header)"}}>
+          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:2}}>
+            <button className="nb" onClick={()=>setDate(d=>shiftDate(d,-1))}>◀</button>
+            <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+              style={{border:"none",background:"transparent",fontSize:13,fontWeight:700,color:"#444",fontFamily:"inherit",cursor:"pointer",textAlign:"center",letterSpacing:0.3}}/>
+            <button className="nb" onClick={()=>setDate(d=>shiftDate(d,1))}>▶</button>
           </div>
-        )}
-        {!loading&&error&&<div style={{fontSize:12,color:"#e53e3e",textAlign:"center"}}>{error}</div>}
-        {!loading&&!error&&pages.length===0&&(
-          <div style={{textAlign:"center",padding:"36px 0",color:"#ddd"}}>
-            <div style={{fontSize:28,marginBottom:6}}>📭</div>
-            <div style={{fontSize:12}}>{fmtDisplay(date)} 항목 없음</div>
+          <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+            {date!==todayStr()&&(
+              <button onClick={()=>setDate(todayStr())}
+                style={{fontSize:10,padding:"2px 8px",borderRadius:20,border:"1px solid var(--accent)",background:"none",color:"var(--accent)",cursor:"pointer",fontFamily:"inherit"}}>
+                오늘
+              </button>
+            )}
+            <button className="nb" onClick={()=>router.push("/setup")} title="설정" style={{fontSize:14}}>⚙</button>
           </div>
-        )}
-        {!loading&&pages.map((page,i)=>(
-          <div key={page.id}>
-            {i>0&&<div style={{height:1,background:"var(--border-color)",marginBottom:20}}/>}
-            <PageBlock page={page} config={config} onUpdate={handleUpdate}/>
-          </div>
-        ))}
+        </div>
+
+        {/* body */}
+        <div className="ds" style={{overflowY:"auto",maxHeight:"calc(100vh - 120px)",padding:"14px 16px",display:"flex",flexDirection:"column",gap:20}}>
+          {loading && (
+            <div style={{display:"flex",justifyContent:"center",padding:"36px 0",gap:6}}>
+              {[0,1,2].map(i=>(
+                <div key={i} style={{width:6,height:6,borderRadius:"50%",background:"var(--accent)",animation:`dotBounce 1.2s ease-in-out ${i*0.2}s infinite`}}/>
+              ))}
+            </div>
+          )}
+          {!loading&&error&&<div style={{fontSize:12,color:"#e53e3e",textAlign:"center"}}>{error}</div>}
+          {!loading&&!error&&pages.length===0&&(
+            <div style={{textAlign:"center",padding:"36px 0",color:"#ccc"}}>
+              <div style={{fontSize:24,marginBottom:6}}>📭</div>
+              <div style={{fontSize:12}}>{fmtDisplay(date)} 항목 없음</div>
+            </div>
+          )}
+          {!loading&&pages.map((page,i)=>(
+            <div key={page.id}>
+              {i>0&&<div style={{height:1,background:"var(--border-color)",marginBottom:20}}/>}
+              <PageBlock page={page} config={config} onUpdate={handleUpdate}/>
+            </div>
+          ))}
+        </div>
+
       </div>
     </div>
   );
