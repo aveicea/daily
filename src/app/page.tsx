@@ -531,7 +531,7 @@ function DailyWidget() {
       `}</style>
 
       {/* header */}
-      <div style={{padding:"8px 14px",display:"flex",alignItems:"center",borderBottom:"1px solid var(--border-color)",flexShrink:0}}>
+      <div style={{padding:"8px 14px",display:"flex",alignItems:"center",borderBottom:"1px solid var(--border-color)",background:"var(--accent-light)",flexShrink:0}}>
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
           <button className="nb" onClick={()=>setDate(d=>shiftDate(d,-1))}>◀</button>
           <input type="date" value={date} onChange={e=>setDate(e.target.value)}
