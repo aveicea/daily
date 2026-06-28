@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, CheckCircle2, GripVertical } from "lucide-react";
 import { CONFIG_STORAGE_KEY, encodeConfig, decodeConfig, buildShareUrl } from "@/lib/config";
@@ -18,6 +18,7 @@ interface Config {
   datePropName: string;
   showTitle: boolean;
   visibleProps: string[];
+  layout?: "vertical" | "horizontal";
   accent: string;
   schema: SchemaProp[];
 }
@@ -222,6 +223,7 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
 
   const [datePropName, setDatePropName] = useState("");
   const [showTitle, setShowTitle] = useState(true);
+  const [layout, setLayout] = useState<"vertical"|"horizontal">("vertical");
   const [accent, setAccent] = useState("#E8A8C0");
   const accentRef = useRef<HTMLInputElement>(null);
 
@@ -280,6 +282,7 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
       token, databaseId, dbTitle,
       datePropName,
       showTitle,
+      layout,
       visibleProps: orderedProps,
       accent,
       schema,
@@ -329,12 +332,23 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
 
             {/* 표시 옵션 */}
             <SectionCard title="표시 옵션">
-              <div style={{ padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+              <div style={{ padding:"12px 16px", display:"flex", flexDirection:"column", gap:12 }}>
+                {[
+                  { label:"페이지 제목 표시", value:showTitle, toggle:()=>setShowTitle(v=>!v) },
+                ].map(({label,value,toggle}) => (
+                  <div key={label} style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <span style={{ fontSize:13, color:"#555" }}>{label}</span>
+                    <div onClick={toggle}
+                      style={{ width:38,height:20,borderRadius:10,background:value?"#E8A8C0":"#e0e0e0",cursor:"pointer",position:"relative",transition:"background 0.2s" }}>
+                      <div style={{ position:"absolute",top:2,left:value?"20px":"2px",width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }}/>
+                    </div>
+                  </div>
+                ))}
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <span style={{ fontSize:13, color:"#555" }}>페이지 제목 표시</span>
-                  <div onClick={() => setShowTitle(v => !v)}
-                    style={{ width:38, height:20, borderRadius:10, background:showTitle?"#E8A8C0":"#e0e0e0", cursor:"pointer", position:"relative", transition:"background 0.2s" }}>
-                    <div style={{ position:"absolute", top:2, left:showTitle?"20px":"2px", width:16, height:16, borderRadius:"50%", background:"#fff", transition:"left 0.2s", boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }}/>
+                  <span style={{ fontSize:13, color:"#555" }}>속성 가로 배치</span>
+                  <div onClick={()=>setLayout(v=>v==="horizontal"?"vertical":"horizontal")}
+                    style={{ width:38,height:20,borderRadius:10,background:layout==="horizontal"?"#E8A8C0":"#e0e0e0",cursor:"pointer",position:"relative",transition:"background 0.2s" }}>
+                    <div style={{ position:"absolute",top:2,left:layout==="horizontal"?"20px":"2px",width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }}/>
                   </div>
                 </div>
               </div>
@@ -523,6 +537,25 @@ export default function SetupPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [partial, setPartial] = useState<{ token: string; databaseId: string; dbTitle: string } | null>(null);
+
+  /* unlock body scroll — globals.css locks it for the widget */
+  useEffect(() => {
+    const prev = { overflow: document.body.style.overflow, position: document.body.style.position, inset: document.body.style.inset, height: document.body.style.height };
+    document.body.style.overflow = "auto";
+    document.body.style.position = "static";
+    document.body.style.inset = "auto";
+    document.body.style.height = "auto";
+    document.documentElement.style.overflow = "auto";
+    document.documentElement.style.height = "auto";
+    return () => {
+      document.body.style.overflow = prev.overflow;
+      document.body.style.position = prev.position;
+      document.body.style.inset = prev.inset;
+      document.body.style.height = prev.height;
+      document.documentElement.style.overflow = "";
+      document.documentElement.style.height = "";
+    };
+  }, []);
   const [config, setConfig] = useState<Config | null>(null);
 
   /* if already configured, offer to edit */
