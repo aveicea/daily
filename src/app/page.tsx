@@ -423,7 +423,7 @@ function PageBlock({ page, config, onUpdate }: {
 
   function renderRow(row: string[], opacity=1) {
     return (
-      <div style={{display:"flex",gap:20,opacity}}>
+      <div style={{display:"flex",gap:20,opacity,alignItems:"flex-start"}}>
         {row.map(propName=>{
           const s = config.schema.find(sc=>sc.name===propName);
           if (!s) return null;
@@ -531,18 +531,22 @@ function DailyWidget() {
       `}</style>
 
       {/* header */}
-      <div style={{padding:"8px 14px",display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,borderBottom:"1px solid var(--border-color)",flexShrink:0}}>
-        {date!==todayStr()&&(
-          <button onClick={()=>setDate(todayStr())}
-            style={{fontSize:10,padding:"2px 8px",borderRadius:20,border:"1px solid var(--accent)",background:"none",color:"var(--accent)",cursor:"pointer",fontFamily:"inherit"}}>
-            오늘
-          </button>
-        )}
-        <button className="nb" onClick={()=>setDate(d=>shiftDate(d,-1))}>◀</button>
-        <input type="date" value={date} onChange={e=>setDate(e.target.value)}
-          style={{border:"none",background:"transparent",fontSize:13,fontWeight:600,color:"#444",fontFamily:"inherit",cursor:"pointer",textAlign:"center",letterSpacing:0.3}}/>
-        <button className="nb" onClick={()=>setDate(d=>shiftDate(d,1))}>▶</button>
-        <button className="nb" onClick={()=>router.push("/setup")} title="설정" style={{fontSize:15,color:"#ccc"}}>⚙</button>
+      <div style={{padding:"8px 14px",display:"flex",alignItems:"center",borderBottom:"1px solid var(--border-color)",flexShrink:0}}>
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+          <button className="nb" onClick={()=>setDate(d=>shiftDate(d,-1))}>◀</button>
+          <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+            style={{border:"none",background:"transparent",fontSize:13,fontWeight:600,color:"#444",fontFamily:"inherit",cursor:"pointer",textAlign:"center",letterSpacing:0.3}}/>
+          <button className="nb" onClick={()=>setDate(d=>shiftDate(d,1))}>▶</button>
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+          {date!==todayStr()&&(
+            <button onClick={()=>setDate(todayStr())}
+              style={{fontSize:10,padding:"2px 8px",borderRadius:20,border:"1px solid var(--accent)",background:"none",color:"var(--accent)",cursor:"pointer",fontFamily:"inherit"}}>
+              오늘
+            </button>
+          )}
+          <button className="nb" onClick={()=>router.push("/setup")} title="설정" style={{fontSize:15,color:"#ccc"}}>⚙</button>
+        </div>
       </div>
 
       {/* body */}
