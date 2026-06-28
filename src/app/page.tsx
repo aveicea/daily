@@ -538,11 +538,6 @@ function DailyWidget() {
 
         {/* header */}
         <div style={{padding:"8px 14px",display:"flex",alignItems:"center",borderBottom:"1px solid var(--border-color)",background:"var(--accent-header)"}}>
-          {/* left spacer — mirrors right side so date stays truly centered */}
-          <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0,visibility:"hidden",pointerEvents:"none"}}>
-            <button style={{fontSize:10,padding:"2px 8px",borderRadius:20,border:"1px solid transparent",background:"none"}}>오늘</button>
-            <button className="nb" style={{fontSize:14}}>⚙</button>
-          </div>
           <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:2}}>
             <button className="nb" onClick={()=>setDate(d=>shiftDate(d,-1))}>◀</button>
             <input type="date" value={date} onChange={e=>setDate(e.target.value)}
@@ -550,12 +545,10 @@ function DailyWidget() {
             <button className="nb" onClick={()=>setDate(d=>shiftDate(d,1))}>▶</button>
           </div>
           <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
-            {date!==todayStr()&&(
-              <button onClick={()=>setDate(todayStr())}
-                style={{fontSize:10,padding:"2px 8px",borderRadius:20,border:"1px solid var(--accent)",background:"none",color:"var(--accent)",cursor:"pointer",fontFamily:"inherit"}}>
-                오늘
-              </button>
-            )}
+            <button onClick={()=>setDate(todayStr())}
+              style={{fontSize:10,padding:"2px 8px",borderRadius:20,border:"1px solid var(--accent)",background:date===todayStr()?"var(--accent-light)":"none",color:"var(--accent)",cursor:"pointer",fontFamily:"inherit"}}>
+              오늘
+            </button>
             <button className="nb" onClick={()=>router.push("/setup")} title="설정" style={{fontSize:14}}>⚙</button>
           </div>
         </div>
