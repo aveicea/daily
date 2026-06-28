@@ -282,21 +282,22 @@ function LayoutBuilder({ layout, schema, onChange }: {
 }
 
 /* ── Step2: 위젯 설정 ── */
-function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
+function Step2({ token, databaseId, dbTitle, existingConfig, onNext, onBack }: {
   token: string; databaseId: string; dbTitle: string;
+  existingConfig?: Config | null;
   onNext: (cfg: Config) => void; onBack: () => void;
 }) {
   const [schema, setSchema] = useState<SchemaProp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [datePropName, setDatePropName] = useState("");
-  const [showTitle, setShowTitle] = useState(true);
-  const [accent, setAccent] = useState("#E8A8C0");
+  const [datePropName, setDatePropName] = useState(existingConfig?.datePropName ?? "");
+  const [showTitle, setShowTitle] = useState(existingConfig?.showTitle ?? true);
+  const [accent, setAccent] = useState(existingConfig?.accent ?? "#E8A8C0");
   const accentRef = useRef<HTMLInputElement>(null);
 
   /* row-based layout: string[][] */
-  const [propLayout, setPropLayout] = useState<string[][]>([]);
+  const [propLayout, setPropLayout] = useState<string[][]>(existingConfig?.propLayout ?? []);
 
   /* fetch schema */
   useEffect(() => {
@@ -308,19 +309,25 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
         const props: SchemaProp[] = d.properties ?? [];
         setSchema(props);
 
-        const dateProps = props.filter(p => p.type === "date");
-        const suggested = d.suggestedDateProp ?? dateProps[0]?.name ?? "";
-        setDatePropName(suggested);
-
-        /* default: each editable non-title prop gets its own row */
-        const editable = props.filter(p => !["formula","rollup","created_time","last_edited_time","created_by","last_edited_by","relation","people","files","title"].includes(p.type));
-        setPropLayout(editable.map(p => [p.name]));
+        if (!existingConfig) {
+          /* first time: set defaults */
+          const dateProps = props.filter(p => p.type === "date");
+          const suggested = d.suggestedDateProp ?? dateProps[0]?.name ?? "";
+          setDatePropName(suggested);
+          const editable = props.filter(p => !["formula","rollup","created_time","last_edited_time","created_by","last_edited_by","relation","people","files","title"].includes(p.type));
+          setPropLayout(editable.map(p => [p.name]));
+        } else if (!datePropName) {
+          /* existing config but datePropName somehow empty */
+          const dateProps = props.filter(p => p.type === "date");
+          setDatePropName(d.suggestedDateProp ?? dateProps[0]?.name ?? "");
+        }
       } catch(e) {
         setError(e instanceof Error ? e.message : "스키마 로딩 실패");
       } finally {
         setLoading(false);
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, databaseId]);
 
   function handleNext() {
@@ -544,6 +551,7 @@ export default function SetupPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [partial, setPartial] = useState<{ token: string; databaseId: string; dbTitle: string } | null>(null);
+  const [existingConfig, setExistingConfig] = useState<Config | null>(null);
 
   /* unlock body scroll — globals.css locks it for the widget */
   useEffect(() => {
@@ -565,15 +573,15 @@ export default function SetupPage() {
   }, []);
   const [config, setConfig] = useState<Config | null>(null);
 
-  /* if already configured, offer to edit */
+  /* if already configured, pre-fill and jump to step 2 */
   useEffect(() => {
     const stored = localStorage.getItem(CONFIG_STORAGE_KEY);
     if (stored) {
       try {
         const c = JSON.parse(stored) as Config;
         if (c.token) {
-          /* pre-fill step 1 and jump to step 2 */
           setPartial({ token: c.token, databaseId: c.databaseId, dbTitle: c.dbTitle });
+          setExistingConfig(c);
           setStep(2);
         }
       } catch { /* ignore */ }
@@ -601,6 +609,7 @@ export default function SetupPage() {
           {step===2 && partial && (
             <Step2
               token={partial.token} databaseId={partial.databaseId} dbTitle={partial.dbTitle}
+              existingConfig={existingConfig}
               onNext={handleStep2} onBack={() => setStep(1)}
             />
           )}
