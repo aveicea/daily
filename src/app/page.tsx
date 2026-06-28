@@ -347,9 +347,9 @@ function PropRow({ schema, value, onSave }: {
           {editing ? (
             <textarea ref={inputRef as unknown as React.RefObject<HTMLTextAreaElement>}
               value={draft} onChange={e=>setDraft(e.target.value)}
-              rows={Math.max(2,lines)}
+              rows={lines||1}
               onKeyDown={e=>{if(e.key==="Escape"){setEditing(false);}}}
-              style={{...inputStyle,flex:1,resize:"vertical",lineHeight:1.6,padding:0}}
+              style={{...inputStyle,flex:1,resize:"none",lineHeight:1.6,padding:0}}
             />
           ) : (
             <span onClick={startEdit}
@@ -522,7 +522,7 @@ function DailyWidget() {
   if (!config) return null;
 
   return (
-    <div style={{...accentVars(accent),height:"100%",display:"flex",alignItems:"flex-start",justifyContent:"center",background:"transparent",fontFamily:"'Pretendard Variable','Pretendard',sans-serif",padding:"16px",boxSizing:"border-box"}}>
+    <div style={{...accentVars(accent),display:"flex",alignItems:"flex-start",justifyContent:"center",background:"transparent",fontFamily:"'Pretendard Variable','Pretendard',sans-serif",padding:"16px",boxSizing:"border-box"}}>
       <style>{`
         @keyframes y2kFadeIn{from{opacity:0}to{opacity:1}}
         @keyframes dotBounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
