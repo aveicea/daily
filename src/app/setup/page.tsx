@@ -409,7 +409,7 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
             </SectionCard>
           </div>
 
-          {/* RIGHT: layout builder */}
+          {/* RIGHT: layout builder + preview */}
           <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
             <SectionCard title="속성 레이아웃">
               <div style={{ padding:"12px 16px" }}>
@@ -418,6 +418,39 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
                   아래 버튼을 눌러 새 행 추가
                 </p>
                 <LayoutBuilder layout={propLayout} schema={layoutSchema} onChange={setPropLayout} />
+              </div>
+            </SectionCard>
+
+            {/* 미리보기 */}
+            <SectionCard title="미리보기">
+              <div style={{ padding:"12px 16px" }}>
+                <div style={{ borderRadius:10, border:`1px solid ${accent}40`, overflow:"hidden", fontSize:12 }}>
+                  {/* header */}
+                  <div style={{ background:`${accent}20`, borderBottom:`1px solid ${accent}40`, padding:"8px 12px", display:"flex", alignItems:"center", justifyContent:"flex-end", gap:6 }}>
+                    <span style={{ padding:"2px 6px", fontSize:11, color:"#aaa" }}>오늘</span>
+                    {["◀","2026.06.28","▶","⚙"].map((t,i)=>(
+                      <span key={i} style={{ padding:"2px 4px", fontSize:11, color: i===1?accent:"#aaa", fontWeight:i===1?700:400 }}>{t}</span>
+                    ))}
+                  </div>
+                  {/* body */}
+                  <div style={{ background:"#fff", padding:"10px 12px", display:"flex", flexDirection:"column", gap:8 }}>
+                    {showTitle && (
+                      <div style={{ fontSize:12, fontWeight:700, color:"#333", paddingBottom:6, borderBottom:`1px solid ${accent}20` }}>페이지 제목</div>
+                    )}
+                    {propLayout.slice(0, 5).map((row, ri) => (
+                      <div key={ri} style={{ display:"flex", gap:12 }}>
+                        {row.map(name => (
+                          <div key={name} style={{ flex:1, display:"flex", flexDirection:"column", gap:3 }}>
+                            <span style={{ fontSize:9, color:"#bbb", fontWeight:600 }}>{name}</span>
+                            <div style={{ height:16, borderRadius:4, background:`${accent}15`, border:`1px solid ${accent}20` }}/>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                    {propLayout.length === 0 && <span style={{ fontSize:11, color:"#ccc", textAlign:"center" }}>속성을 추가하세요</span>}
+                    {propLayout.length > 5 && <span style={{ fontSize:10, color:"#bbb", textAlign:"center" }}>+{propLayout.length-5}행 더</span>}
+                  </div>
+                </div>
               </div>
             </SectionCard>
           </div>

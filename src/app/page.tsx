@@ -235,7 +235,7 @@ function PropRow({ schema, value, onSave }: {
         <div style={{position:"relative",display:"inline-block"}}>
           <div onClick={startEdit}
             style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:20,background:curOpt?optBg(curOpt.color):editing?"var(--accent-light)":"#f5f5f5",cursor:"pointer",fontSize:13,color:"#444",opacity:saving?0.5:1,border:`1px solid ${editing?"var(--accent)":"transparent"}`,transition:"all 0.15s"}}>
-            {curName||<span style={{color:"#ccc"}}>—</span>}
+            {curName||<span style={{opacity:0}}>—</span>}
             <span style={{fontSize:9,opacity:0.4}}>▼</span>
           </div>
           {indicator}
@@ -279,7 +279,7 @@ function PropRow({ schema, value, onSave }: {
         <div style={{position:"relative"}}>
           <div onClick={startEdit}
             style={{display:"flex",flexWrap:"wrap",gap:4,cursor:"pointer",minHeight:24,alignItems:"center",padding:"2px 0",opacity:saving?0.5:1}}>
-            {curNames.length===0&&!editing&&<span style={{fontSize:13,color:"#ccc"}}>—</span>}
+            {curNames.length===0&&!editing&&<span style={{fontSize:13,opacity:0}}>—</span>}
             {curNames.map((name:string)=>{
               const o=opts.find(op=>op.name===name);
               return <span key={name} style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:o?optBg(o.color):"#e3e3e3",color:"#444"}}>{name}</span>;
@@ -324,7 +324,7 @@ function PropRow({ schema, value, onSave }: {
             />
           ) : (
             <span onClick={startEdit} style={{fontSize:13,color:display?"#444":"#ccc",cursor:"pointer",padding:"2px 0"}}>
-              {display||"—"}
+              {display||<span style={{opacity:0}}>—</span>}
             </span>
           )}
           {indicator}
@@ -350,7 +350,7 @@ function PropRow({ schema, value, onSave }: {
           ) : (
             <span onClick={startEdit}
               style={{fontSize:13,color:display?"#444":"#ccc",cursor:"pointer",whiteSpace:"pre-wrap",wordBreak:"break-word",flex:1,display:"block",lineHeight:1.6}}>
-              {display||"—"}
+              {display||<span style={{opacity:0}}>—</span>}
             </span>
           )}
           {indicator}
@@ -374,7 +374,7 @@ function PropRow({ schema, value, onSave }: {
         ) : (
           <span onClick={startEdit}
             style={{fontSize:13,color:display?"#444":"#ccc",cursor:"pointer",wordBreak:"break-all",flex:1}}>
-            {display||"—"}
+            {display||<span style={{opacity:0}}>—</span>}
           </span>
         )}
         {indicator}
@@ -423,7 +423,7 @@ function PageBlock({ page, config, onUpdate }: {
 
   function renderRow(row: string[], opacity=1) {
     return (
-      <div style={{display:"flex",gap:20,opacity}}>
+      <div style={{display:"flex",gap:20,opacity,alignItems:"flex-start"}}>
         {row.map(propName=>{
           const s = config.schema.find(sc=>sc.name===propName);
           if (!s) return null;
