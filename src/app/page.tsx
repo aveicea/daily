@@ -254,7 +254,7 @@ function PropRow({ schema, value, onSave }: {
             {indicator}
           </div>
           {editing && (
-            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#fff",border:"1px solid var(--border-color)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)",minWidth:"100%",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#fff",border:"1px solid var(--border-color)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)",minWidth:"100%",maxHeight:220,overflowY:"auto"}}>
               <div onClick={()=>{setDraft("");commit();}} style={{padding:"8px 14px",fontSize:12,color:"#bbb",cursor:"pointer",borderBottom:"1px solid #f5f5f5"}}>선택 안 함</div>
               {opts.map(o=>(
                 <div key={o.id} onClick={()=>{setEditing(false);setSaving(true);onSave(buildPatch(type,o.name)).then(()=>{setSaved(true);setTimeout(()=>setSaved(false),1000);}).finally(()=>setSaving(false));}}
@@ -291,7 +291,7 @@ function PropRow({ schema, value, onSave }: {
             {indicator}
           </div>
           {editing && (
-            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#fff",border:"1px solid var(--border-color)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)",minWidth:"100%",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#fff",border:"1px solid var(--border-color)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)",minWidth:"100%",maxHeight:220,overflowY:"auto"}}>
               {opts.map(o=>{
                 const sel=multiDraft.includes(o.name);
                 return (
