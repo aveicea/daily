@@ -17,8 +17,7 @@ interface Config {
   token: string; databaseId: string; dbTitle: string;
   datePropName: string;
   showTitle: boolean;
-  visibleProps: string[];
-  layout?: "vertical" | "horizontal";
+  propLayout: string[][];
   accent: string;
   schema: SchemaProp[];
 }
@@ -171,43 +170,113 @@ function Step1({ onNext }: { onNext: (d: { token: string; databaseId: string; db
   );
 }
 
-/* ── DraggablePropList ── */
-function DraggablePropList({ items, onReorder }: {
-  items: { name: string; type: string }[];
-  onReorder: (next: string[]) => void;
+/* ── LayoutBuilder ── row-based drag layout ── */
+function LayoutBuilder({ layout, schema, onChange }: {
+  layout: string[][];
+  schema: SchemaProp[];
+  onChange: (next: string[][]) => void;
 }) {
-  const dragIdx = useRef<number | null>(null);
-  const [over, setOver] = useState<number | null>(null);
+  const dragRowIdx = useRef<number | null>(null);
+  const [overRow, setOverRow] = useState<number | null>(null);
+  const [addingTo, setAddingTo] = useState<number | null>(null);
 
-  function onDragStart(i: number) { dragIdx.current = i; }
-  function onDragOver(e: React.DragEvent, i: number) { e.preventDefault(); setOver(i); }
-  function onDrop(i: number) {
-    if (dragIdx.current == null || dragIdx.current === i) { setOver(null); return; }
-    const arr = [...items];
-    const [moved] = arr.splice(dragIdx.current, 1);
-    arr.splice(i, 0, moved);
-    onReorder(arr.map(a => a.name));
-    dragIdx.current = null;
-    setOver(null);
+  const placed = new Set(layout.flat());
+  const unplaced = schema
+    .filter(p => p.type !== "title" && !placed.has(p.name))
+    .map(p => p.name);
+
+  function removeFromRow(rowIdx: number, propName: string) {
+    const next = layout.map((row, i) => i === rowIdx ? row.filter(n => n !== propName) : row).filter(row => row.length > 0);
+    onChange(next);
   }
-  function onDragEnd() { dragIdx.current = null; setOver(null); }
+
+  function addToRow(rowIdx: number, propName: string) {
+    const next = layout.map((row, i) => i === rowIdx ? [...row, propName] : row);
+    onChange(next);
+    setAddingTo(null);
+  }
+
+  function addNewRow(propName: string) {
+    onChange([...layout, [propName]]);
+  }
+
+  function onDragStart(i: number) { dragRowIdx.current = i; }
+  function onDragOver(e: React.DragEvent, i: number) { e.preventDefault(); setOverRow(i); }
+  function onDrop(i: number) {
+    if (dragRowIdx.current == null || dragRowIdx.current === i) { setOverRow(null); return; }
+    const arr = [...layout];
+    const [moved] = arr.splice(dragRowIdx.current, 1);
+    arr.splice(i, 0, moved);
+    onChange(arr);
+    dragRowIdx.current = null;
+    setOverRow(null);
+  }
+  function onDragEnd() { dragRowIdx.current = null; setOverRow(null); }
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-      {items.map((item, i) => (
-        <div key={item.name}
+    <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+      {layout.map((row, ri) => (
+        <div key={ri}
           draggable
-          onDragStart={() => onDragStart(i)}
-          onDragOver={e => onDragOver(e, i)}
-          onDrop={() => onDrop(i)}
+          onDragStart={() => onDragStart(ri)}
+          onDragOver={e => onDragOver(e, ri)}
+          onDrop={() => onDrop(ri)}
           onDragEnd={onDragEnd}
-          style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:8, background: over===i ? "#FFF0F5" : "#f9f9f9", border:`1px solid ${over===i?"#E8A8C0":"#f0f0f0"}`, transition:"all 0.15s", cursor:"grab" }}>
-          <GripVertical size={14} color="#ccc" />
-          <span style={{ fontSize:11, fontFamily:"monospace", color:"#aaa", background:"#f0f0f0", padding:"1px 5px", borderRadius:3 }}>{typeIcon(item.type)}</span>
-          <span style={{ fontSize:13, color:"#444", flex:1 }}>{item.name}</span>
-          <span style={{ fontSize:10, color:"#bbb" }}>{typeLabel(item.type)}</span>
+          style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 8px", borderRadius:8, background: overRow===ri ? "#FFF0F5" : "#f9f9f9", border:`1px solid ${overRow===ri?"#E8A8C0":"#f0f0f0"}`, transition:"all 0.15s", cursor:"grab", flexWrap:"wrap" }}>
+          <GripVertical size={13} color="#ccc" style={{ flexShrink:0 }} />
+          {row.map(propName => {
+            const s = schema.find(p => p.name === propName);
+            return (
+              <span key={propName} style={{ display:"inline-flex", alignItems:"center", gap:4, background:"#fff", border:"1px solid #e8e8e8", borderRadius:20, padding:"2px 8px 2px 6px", fontSize:12, color:"#555" }}>
+                <span style={{ fontSize:10, color:"#bbb", fontFamily:"monospace" }}>{typeIcon(s?.type??"")}</span>
+                {propName}
+                <span onClick={() => removeFromRow(ri, propName)} style={{ cursor:"pointer", color:"#ccc", fontSize:13, lineHeight:1, marginLeft:2 }}>×</span>
+              </span>
+            );
+          })}
+          {/* + 나란히 */}
+          {unplaced.length > 0 && (
+            <div style={{ position:"relative" }}>
+              {addingTo === ri ? (
+                <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, zIndex:200, background:"#fff", border:"1px solid #F5C6D0", borderRadius:8, boxShadow:"0 4px 16px rgba(0,0,0,0.08)", minWidth:140, overflow:"hidden" }}>
+                  {unplaced.map(n => (
+                    <div key={n} onClick={() => addToRow(ri, n)}
+                      style={{ padding:"7px 12px", fontSize:12, cursor:"pointer", color:"#555" }}
+                      onMouseEnter={e => (e.currentTarget.style.background="#FFF0F5")}
+                      onMouseLeave={e => (e.currentTarget.style.background="transparent")}>
+                      {n}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <button onClick={() => setAddingTo(addingTo === ri ? null : ri)}
+                style={{ fontSize:11, color:"#E8A8C0", background:"#FFF0F5", border:"1px dashed #F5C6D0", borderRadius:20, padding:"2px 8px", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+                + 나란히
+              </button>
+            </div>
+          )}
         </div>
       ))}
+
+      {/* unplaced props */}
+      {unplaced.length > 0 && (
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:4 }}>
+          {unplaced.map(n => {
+            const s = schema.find(p => p.name === n);
+            return (
+              <button key={n} onClick={() => addNewRow(n)}
+                style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 10px", fontSize:12, color:"#aaa", background:"#f9f9f9", border:"1px dashed #e0e0e0", borderRadius:20, cursor:"pointer", fontFamily:"inherit" }}>
+                <span style={{ fontSize:10, fontFamily:"monospace" }}>{typeIcon(s?.type??"")}</span>
+                + {n}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {layout.length === 0 && unplaced.length === 0 && (
+        <p style={{ fontSize:12, color:"#bbb", textAlign:"center", padding:"12px 0" }}>선택된 속성이 없습니다.</p>
+      )}
     </div>
   );
 }
@@ -223,14 +292,11 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
 
   const [datePropName, setDatePropName] = useState("");
   const [showTitle, setShowTitle] = useState(true);
-  const [layout, setLayout] = useState<"vertical"|"horizontal">("vertical");
   const [accent, setAccent] = useState("#E8A8C0");
   const accentRef = useRef<HTMLInputElement>(null);
 
-  /* checked props for visibility */
-  const [checkedProps, setCheckedProps] = useState<Set<string>>(new Set());
-  /* ordered list of visible props (for drag reorder) */
-  const [orderedProps, setOrderedProps] = useState<string[]>([]);
+  /* row-based layout: string[][] */
+  const [propLayout, setPropLayout] = useState<string[][]>([]);
 
   /* fetch schema */
   useEffect(() => {
@@ -246,11 +312,9 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
         const suggested = d.suggestedDateProp ?? dateProps[0]?.name ?? "";
         setDatePropName(suggested);
 
-        /* default: check all non-title, non-formula, non-rollup props */
+        /* default: each editable non-title prop gets its own row */
         const editable = props.filter(p => !["formula","rollup","created_time","last_edited_time","created_by","last_edited_by","relation","people","files","title"].includes(p.type));
-        const names = editable.map(p => p.name);
-        setCheckedProps(new Set(names));
-        setOrderedProps(names);
+        setPropLayout(editable.map(p => [p.name]));
       } catch(e) {
         setError(e instanceof Error ? e.message : "스키마 로딩 실패");
       } finally {
@@ -259,44 +323,20 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
     })();
   }, [token, databaseId]);
 
-  function toggleProp(name: string) {
-    setCheckedProps(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-        setOrderedProps(o => o.filter(n => n !== name));
-      } else {
-        next.add(name);
-        setOrderedProps(o => [...o, name]);
-      }
-      return next;
-    });
-  }
-
-  function handleReorder(next: string[]) {
-    setOrderedProps(next);
-  }
-
   function handleNext() {
     onNext({
       token, databaseId, dbTitle,
       datePropName,
       showTitle,
-      layout,
-      visibleProps: orderedProps,
+      propLayout,
       accent,
       schema,
     });
   }
 
-  const editableSchema = schema.filter(p =>
+  const layoutSchema = schema.filter(p =>
     !["formula","rollup","created_time","last_edited_time","created_by","last_edited_by","relation","people","files"].includes(p.type)
   );
-  const nonTitleSchema = editableSchema.filter(p => p.type !== "title");
-
-  const orderedVisible = orderedProps
-    .map(name => schema.find(s => s.name === name))
-    .filter((s): s is SchemaProp => !!s);
 
   return (
     <div className="animate-fadeIn" style={{ display:"flex", flexDirection:"column", gap:20, maxWidth:720, margin:"0 auto", width:"100%" }}>
@@ -311,7 +351,7 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
       {error && <p style={{ fontSize:12, color:"#e53e3e", textAlign:"center" }}>{error}</p>}
 
       {!loading && !error && (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"280px 1fr", gap:16 }}>
 
           {/* LEFT */}
           <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
@@ -333,22 +373,11 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
             {/* 표시 옵션 */}
             <SectionCard title="표시 옵션">
               <div style={{ padding:"12px 16px", display:"flex", flexDirection:"column", gap:12 }}>
-                {[
-                  { label:"페이지 제목 표시", value:showTitle, toggle:()=>setShowTitle(v=>!v) },
-                ].map(({label,value,toggle}) => (
-                  <div key={label} style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                    <span style={{ fontSize:13, color:"#555" }}>{label}</span>
-                    <div onClick={toggle}
-                      style={{ width:38,height:20,borderRadius:10,background:value?"#E8A8C0":"#e0e0e0",cursor:"pointer",position:"relative",transition:"background 0.2s" }}>
-                      <div style={{ position:"absolute",top:2,left:value?"20px":"2px",width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }}/>
-                    </div>
-                  </div>
-                ))}
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <span style={{ fontSize:13, color:"#555" }}>속성 가로 배치</span>
-                  <div onClick={()=>setLayout(v=>v==="horizontal"?"vertical":"horizontal")}
-                    style={{ width:38,height:20,borderRadius:10,background:layout==="horizontal"?"#E8A8C0":"#e0e0e0",cursor:"pointer",position:"relative",transition:"background 0.2s" }}>
-                    <div style={{ position:"absolute",top:2,left:layout==="horizontal"?"20px":"2px",width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }}/>
+                  <span style={{ fontSize:13, color:"#555" }}>페이지 제목 표시</span>
+                  <div onClick={() => setShowTitle(v => !v)}
+                    style={{ width:38,height:20,borderRadius:10,background:showTitle?"#E8A8C0":"#e0e0e0",cursor:"pointer",position:"relative",transition:"background 0.2s" }}>
+                    <div style={{ position:"absolute",top:2,left:showTitle?"20px":"2px",width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }}/>
                   </div>
                 </div>
               </div>
@@ -378,72 +407,17 @@ function Step2({ token, databaseId, dbTitle, onNext, onBack }: {
                 </div>
               </div>
             </SectionCard>
-
-            {/* 속성 선택 */}
-            <SectionCard title="표시할 속성 선택">
-              <div style={{ padding:"12px 16px", display:"flex", flexDirection:"column", gap:6 }}>
-                <p style={{ fontSize:11, color:"#aaa", marginBottom:4 }}>체크한 속성이 위젯에 표시됩니다.</p>
-                {nonTitleSchema.map(prop => (
-                  <label key={prop.name} style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", padding:"5px 0" }}>
-                    <div onClick={() => toggleProp(prop.name)}
-                      style={{ width:16, height:16, borderRadius:4, border:`2px solid ${checkedProps.has(prop.name)?"#E8A8C0":"#ddd"}`, background:checkedProps.has(prop.name)?"#E8A8C0":"#fff", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s", cursor:"pointer" }}>
-                      {checkedProps.has(prop.name) && <svg width="8" height="8" viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="#fff" strokeWidth="1.5" fill="none"/></svg>}
-                    </div>
-                    <span style={{ fontSize:11, fontFamily:"monospace", color:"#aaa", background:"#f5f5f5", padding:"1px 5px", borderRadius:3 }}>{typeIcon(prop.type)}</span>
-                    <span style={{ fontSize:13, color:"#444", flex:1 }}>{prop.name}</span>
-                    <span style={{ fontSize:10, color:"#bbb" }}>{typeLabel(prop.type)}</span>
-                  </label>
-                ))}
-                {nonTitleSchema.length === 0 && (
-                  <p style={{ fontSize:12, color:"#bbb", textAlign:"center", padding:"8px 0" }}>표시 가능한 속성이 없습니다.</p>
-                )}
-              </div>
-            </SectionCard>
           </div>
 
-          {/* RIGHT: 순서 조정 */}
+          {/* RIGHT: layout builder */}
           <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-            <SectionCard title="속성 순서 (드래그)">
+            <SectionCard title="속성 레이아웃">
               <div style={{ padding:"12px 16px" }}>
-                <p style={{ fontSize:11, color:"#aaa", marginBottom:10, lineHeight:1.5 }}>드래그해서 위젯에 표시될 순서를 조정하세요.</p>
-                {orderedVisible.length === 0 ? (
-                  <p style={{ fontSize:12, color:"#bbb", textAlign:"center", padding:"16px 0" }}>선택된 속성이 없습니다.</p>
-                ) : (
-                  <DraggablePropList items={orderedVisible} onReorder={handleReorder} />
-                )}
-              </div>
-            </SectionCard>
-
-            {/* 미리보기 */}
-            <SectionCard title="미리보기">
-              <div style={{ padding:"12px 16px" }}>
-                <div style={{ borderRadius:10, border:`1px solid ${accent}40`, overflow:"hidden", fontSize:12 }}>
-                  {/* header */}
-                  <div style={{ background:`${accent}20`, borderBottom:`1px solid ${accent}40`, padding:"8px 12px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                    <div style={{ display:"flex", gap:4 }}>
-                      {["◀","2026.06.28","▶"].map((t,i)=>(
-                        <span key={i} style={{ padding:"2px 6px", borderRadius:4, background:i===1?accent:"#fff", color:i===1?"#fff":"#888", fontSize:11, border:`1px solid ${accent}40` }}>{t}</span>
-                      ))}
-                    </div>
-                    <span style={{ fontSize:11, color:"#aaa" }}>⚙</span>
-                  </div>
-                  {/* card */}
-                  <div style={{ background:"#fff", margin:10, borderRadius:8, border:`1px solid ${accent}20`, overflow:"hidden" }}>
-                    {showTitle && (
-                      <div style={{ padding:"8px 10px", borderBottom:`1px solid ${accent}20`, background:`${accent}10`, fontSize:12, fontWeight:700, color:"#333" }}>📄 페이지 제목</div>
-                    )}
-                    <div style={{ padding:"8px 10px", display:"flex", flexDirection:"column", gap:6 }}>
-                      {orderedVisible.slice(0, 4).map(p => (
-                        <div key={p.name} style={{ display:"flex", alignItems:"center", gap:6 }}>
-                          <span style={{ fontSize:10, color:"#aaa", minWidth:70, flexShrink:0 }}>{p.name}</span>
-                          <div style={{ flex:1, height:18, borderRadius:4, background:`${accent}15`, border:`1px solid ${accent}25` }}/>
-                        </div>
-                      ))}
-                      {orderedVisible.length === 0 && <span style={{ fontSize:11, color:"#ccc", textAlign:"center" }}>속성을 선택하세요</span>}
-                      {orderedVisible.length > 4 && <span style={{ fontSize:10, color:"#bbb", textAlign:"center" }}>+{orderedVisible.length-4}개 더</span>}
-                    </div>
-                  </div>
-                </div>
+                <p style={{ fontSize:11, color:"#aaa", marginBottom:10, lineHeight:1.6 }}>
+                  행을 드래그해서 순서 변경 · <strong style={{color:"#E8A8C0"}}>+ 나란히</strong>로 같은 행에 추가 · <strong>×</strong>로 제거<br/>
+                  아래 버튼을 눌러 새 행 추가
+                </p>
+                <LayoutBuilder layout={propLayout} schema={layoutSchema} onChange={setPropLayout} />
               </div>
             </SectionCard>
           </div>
@@ -498,7 +472,7 @@ function Step3({ config, onBack }: { config: Config; onBack: () => void }) {
         {[
           { label:"데이터베이스", value:config.dbTitle },
           { label:"날짜 속성", value:config.datePropName },
-          { label:"표시 속성", value:`${config.visibleProps.length}개` },
+          { label:"표시 속성", value:`${config.propLayout.flat().length}개` },
           { label:"제목 표시", value:config.showTitle ? "ON" : "OFF" },
         ].map(item => (
           <div key={item.label} style={{ display:"flex", justifyContent:"space-between", padding:"4px 0", fontSize:13 }}>
