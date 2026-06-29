@@ -489,15 +489,27 @@ function DailyWidget() {
 
   useEffect(()=>{
     const raw = searchParams.get("config");
+    let cfg: Config|null = null;
     if (raw) {
       const decoded = decodeConfig<Config>(raw);
-      if (decoded?.token) { setConfig(decoded); return; }
+      if (decoded?.token) cfg = decoded;
     }
-    const stored = localStorage.getItem(CONFIG_STORAGE_KEY);
-    if (stored) {
-      try { setConfig(JSON.parse(stored)); return; } catch { /* ignore */ }
+    if (!cfg) {
+      const stored = localStorage.getItem(CONFIG_STORAGE_KEY);
+      if (stored) { try { cfg = JSON.parse(stored); } catch { /* ignore */ } }
     }
-    router.replace("/setup");
+    if (!cfg) { router.replace("/setup"); return; }
+    setConfig(cfg);
+    /* refresh schema in background so select/status options stay up to date */
+    fetch("/api/notion/schema", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({token:cfg.token, databaseId:cfg.databaseId}),
+    }).then(r=>r.json()).then(data=>{
+      if (data.properties) {
+        setConfig(prev=>prev?{...prev,schema:data.properties}:prev);
+      }
+    }).catch(()=>{/* silently ignore — use cached schema */});
   },[searchParams,router]);
 
   const fetchPages = useCallback(async(cfg:Config,d:string)=>{
